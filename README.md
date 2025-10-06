@@ -1,5 +1,9 @@
 # Bible Korean MCP Server
 
+[![CI](https://github.com/oksure/bible-ko-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/oksure/bible-ko-mcp/actions/workflows/ci.yml)
+[![NPM Version](https://img.shields.io/npm/v/bible-ko-mcp.svg)](https://www.npmjs.com/package/bible-ko-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 MCP (Model Context Protocol) server for accessing the Korean Bible from bskorea.or.kr.
 
 ## Features
@@ -185,6 +189,14 @@ npm start
 - The HTML parsing may need adjustment based on website updates
 - Search functionality is limited for demo purposes to avoid excessive requests
 - Some translations may not be available for all books
+
+## Publishing
+
+This package is automatically published to NPM when a new GitHub release is created. See [PUBLISHING.md](PUBLISHING.md) for detailed instructions.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 

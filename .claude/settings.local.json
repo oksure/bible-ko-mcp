@@ -7,7 +7,9 @@
       "Bash(npx tsx:*)",
       "Bash(npm test)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
