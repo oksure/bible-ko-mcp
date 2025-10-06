@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "bible-ko": {
+      "command": "node",
+      "args": [
+        "/Users/oksure/Documents/Dev/mcp/bible-ko-mcp/build/index.js"
+      ]
+    }
+  }
+}

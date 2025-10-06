@@ -1,0 +1,52 @@
+{
+  "name": "bible-ko-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Korean Bible (bskorea.or.kr)",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "bible-ko-mcp": "build/index.js"
+  },
+  "files": [
+    "build/",
+    "README.md",
+    "USAGE.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "start": "node build/index.js",
+    "test": "npx tsx src/test-comprehensive.ts",
+    "test:quick": "npx tsx src/test-final.ts",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oksure/bible-ko-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/oksure/bible-ko-mcp/issues"
+  },
+  "homepage": "https://github.com/oksure/bible-ko-mcp#readme",
+  "keywords": [
+    "mcp",
+    "bible",
+    "korean",
+    "christianity",
+    "model-context-protocol",
+    "claude",
+    "bskorea"
+  ],
+  "author": "oksure",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "cheerio": "^1.0.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.2"
+  }
+}
