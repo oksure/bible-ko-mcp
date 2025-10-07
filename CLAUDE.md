@@ -137,19 +137,45 @@ for (let chapter = 1; chapter <= 3; chapter++)   // Only 3 chapters
 
 ## Publishing Workflow
 
-**Automated via GitHub Actions:**
+**Setup Status:**
+- ✅ NPM_TOKEN configured in GitHub repository secrets
+- ✅ GitHub Actions workflows created (.github/workflows/publish.yml)
+- ✅ CI workflow running on push (.github/workflows/ci.yml)
+- 🔄 Ready to publish v0.1.0 to NPM
 
-1. Update version: `npm version patch|minor|major`
-2. Push: `git push && git push --tags`
-3. Create GitHub release with the tag
-4. GitHub Action runs: test → build → `npm publish`
+**To Publish a New Version:**
 
-**Manual publish:** See PUBLISHING.md
+1. **Update version:**
+   ```bash
+   npm version patch  # 0.1.0 → 0.1.1 (bug fixes)
+   npm version minor  # 0.1.0 → 0.2.0 (new features)
+   npm version major  # 0.1.0 → 1.0.0 (breaking changes)
+   ```
+
+2. **Push changes and tags:**
+   ```bash
+   git push && git push --tags
+   ```
+
+3. **Create GitHub release:**
+   - Go to https://github.com/oksure/bible-ko-mcp/releases
+   - Click "Create a new release"
+   - Choose the version tag (e.g., v0.1.0)
+   - Write release notes
+   - Click "Publish release"
+
+4. **Automated workflow runs:**
+   - Tests execute (all 25 must pass)
+   - Build runs
+   - Publishes to NPM with provenance
+   - Package appears at npmjs.com/package/bible-ko-mcp
+
+**Manual publish (alternative):** See PUBLISHING.md
 
 **Important:**
 - `prepublishOnly` script runs tests before publishing (safety net)
-- Requires `NPM_TOKEN` secret in GitHub repository settings
-- Must pass all 25 tests before publish
+- Must pass all 25 tests before publish succeeds
+- First publication must be done manually or via GitHub release
 
 ## Common Patterns
 
@@ -171,13 +197,30 @@ for (let chapter = 1; chapter <= 3; chapter++)   // Only 3 chapters
 
 ## MCP Integration
 
-**Claude Desktop Configuration:**
+**Claude Desktop Configuration (Local Development):**
 ```json
 {
   "mcpServers": {
     "bible-ko": {
       "command": "node",
-      "args": ["/absolute/path/to/build/index.js"]
+      "args": [
+        "/Users/oksure/Documents/Dev/mcp/bible-ko-mcp/build/index.js"
+      ]
+    }
+  }
+}
+```
+
+**Once Published to NPM:**
+```json
+{
+  "mcpServers": {
+    "bible-ko": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "bible-ko-mcp"
+      ]
     }
   }
 }
@@ -187,10 +230,16 @@ for (let chapter = 1; chapter <= 3; chapter++)   // Only 3 chapters
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
-**After changes:**
-1. Run `npm run build`
-2. Restart Claude Desktop completely
-3. Check MCP server appears in Claude Desktop settings
+**After making changes to the code:**
+1. Run `npm run build` (must rebuild!)
+2. Restart Claude Desktop completely (not just close window)
+3. Verify server is running: ask Claude "What books are in the New Testament?"
+
+**Troubleshooting:**
+- Build file must exist: `ls build/index.js`
+- Make executable: `chmod +x build/index.js`
+- Test manually: `node build/index.js` (should print "Bible Korean MCP Server running on stdio")
+- Check Claude Desktop logs if connection fails
 
 ## Code Organization
 
