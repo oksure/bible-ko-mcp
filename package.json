@@ -1,6 +1,6 @@
 {
   "name": "bible-ko-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for Korean Bible (bskorea.or.kr)",
   "type": "module",
   "main": "build/index.js",
