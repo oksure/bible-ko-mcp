@@ -17,9 +17,16 @@ This MCP server provides tools to:
 
 ## Installation
 
+Install globally via npm:
+
 ```bash
-npm install
-npm run build
+npm install -g bible-ko-mcp
+```
+
+Or use directly with npx (no installation required):
+
+```bash
+npx -y bible-ko-mcp
 ```
 
 ## Available Tools
@@ -150,31 +157,64 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "bible-ko": {
-      "command": "node",
-      "args": ["/path/to/bible-ko-mcp/build/index.js"]
+      "command": "npx",
+      "args": [
+        "-y",
+        "bible-ko-mcp"
+      ]
     }
   }
 }
 ```
 
 ### Windows
-Edit `%APPDATA%\Claude\claude_desktop_config.json`
+Edit `%APPDATA%\Claude\claude_desktop_config.json` with the same configuration above.
+
+After adding the configuration, restart Claude Desktop completely.
 
 ## Development
 
+For local development:
+
 ```bash
+# Clone the repository
+git clone https://github.com/oksure/bible-ko-mcp.git
+cd bible-ko-mcp
+
 # Install dependencies
 npm install
 
 # Build
 npm run build
 
-# Watch mode
+# Run tests
+npm test
+
+# Watch mode (auto-rebuild on changes)
 npm run watch
 
-# Run
+# Run locally
 npm start
 ```
+
+### Local Development with Claude Desktop
+
+For testing local changes, use this configuration:
+
+```json
+{
+  "mcpServers": {
+    "bible-ko": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/bible-ko-mcp/build/index.js"
+      ]
+    }
+  }
+}
+```
+
+Remember to run `npm run build` after making changes.
 
 ## Technical Details
 
