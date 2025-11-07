@@ -6,6 +6,10 @@
 
 MCP (Model Context Protocol) server for accessing the Korean Bible from bskorea.or.kr.
 
+<a href="https://glama.ai/mcp/servers/@oksure/bible-ko-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@oksure/bible-ko-mcp/badge" alt="Bible Korean Server MCP server" />
+</a>
+
 ## Features
 
 This MCP server provides tools to:
