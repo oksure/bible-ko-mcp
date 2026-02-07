@@ -40,6 +40,9 @@
   ],
   "author": "oksure",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "cheerio": "^1.0.0",
