@@ -6,6 +6,10 @@
 
 MCP (Model Context Protocol) server for accessing the Korean Bible from bskorea.or.kr.
 
+<a href="https://glama.ai/mcp/servers/@oksure/bible-ko-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@oksure/bible-ko-mcp/badge" alt="Bible Korean Server MCP server" />
+</a>
+
 **Features:**
 - ⚡️ **In-memory caching** with 30-min TTL for fast repeated requests
 - 🛡️ **Robust error handling** with try/catch and graceful fallbacks
@@ -235,6 +239,149 @@ Remember to run `npm run build` after making changes.
 - Fetches data from bskorea.or.kr
 - Supports all 66 books of the Bible
 - Handles Korean and English book names
+
+## Use Cases
+
+### Sermon Preparation
+
+**Weekly Sunday sermon with the Beatitudes**
+
+Ask Claude: *"Give me Matthew 5:3-12 in Korean (GAE) with each beatitude on a separate line for my sermon outline."*
+
+```
+Tool: get-verses
+Book: Matthew, Chapter: 5, Start: 3, End: 12
+```
+
+**Good Friday — Messianic prophecy from Isaiah**
+
+```
+Tool: get-chapter
+Book: Isaiah, Chapter: 53, Version: GAE
+```
+
+**Christmas Eve sermon — The nativity narrative**
+
+```
+Tool: get-verses
+Book: Luke, Chapter: 2, Start: 1, End: 20
+```
+
+**Easter Sunday — The resurrection account**
+
+```
+Tool: get-chapter
+Book: John, Chapter: 20, Version: GAE
+```
+
+**Wedding homily — The Love Chapter**
+
+```
+Tool: get-chapter
+Book: 1 Corinthians, Chapter: 13, Version: GAE
+```
+
+**Missions Sunday — The Great Commission**
+
+```
+Tool: get-verses
+Book: Matthew, Chapter: 28, Start: 18, End: 20
+```
+
+---
+
+### Bible Study Groups
+
+**Comparing John 3:16 across translations for group discussion**
+
+```
+Tool: compare-translations
+Book: John, Chapter: 3, Verse: 16
+Versions: ["GAE", "GAE1", "NIR", "KOR"]
+```
+
+**Topical study: Living Faith (야고보서의 믿음)**
+
+```
+Tool: get-verses
+Book: James, Chapter: 2, Start: 14, End: 26
+```
+
+**Fruit of the Spirit study**
+
+```
+Tool: get-verses
+Book: Galatians, Chapter: 5, Start: 22, End: 23
+```
+
+**Hebrews 11 "Faith Hall of Fame" — full chapter**
+
+```
+Tool: get-chapter
+Book: Hebrews, Chapter: 11, Version: GAE
+```
+
+**Spiritual warfare — full armor of God passage**
+
+```
+Tool: get-verses
+Book: Ephesians, Chapter: 6, Start: 10, End: 18
+```
+
+---
+
+### Personal Devotional
+
+**Psalm 23 for comfort (funeral message, hospital visits)**
+
+```
+Tool: get-chapter
+Book: Psalms, Chapter: 23, Version: GAE
+```
+
+**Romans 8:28-39 — Assurance of God's love**
+
+```
+Tool: get-verses
+Book: Romans, Chapter: 8, Start: 28, End: 39
+```
+
+**Daily scripture memory verse**
+
+```
+Tool: get-verses
+Book: Philippians, Chapter: 4, Start: 13, End: 13
+```
+
+**Advent devotional — The Word became flesh**
+
+```
+Tool: get-verses
+Book: John, Chapter: 1, Start: 1, End: 14
+```
+
+---
+
+### Korean Language Look-up
+
+All tools accept Korean book names, making it natural to reference Scripture in Korean:
+
+```
+Tool: get-chapter
+Book: 시편 (Psalms), Chapter: 23
+```
+
+```
+Tool: get-verses
+Book: 잠언 (Proverbs), Chapter: 3, Start: 5, End: 6
+```
+
+```
+Tool: search-bible
+Query: 하나님의 사랑 (God's love)
+```
+
+
 
 ## Notes
 

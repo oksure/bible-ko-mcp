@@ -1,6 +1,6 @@
 {
   "name": "bible-ko-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "MCP server for Korean Bible (bskorea.or.kr)",
   "type": "module",
   "main": "build/index.js",
@@ -17,7 +17,9 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "start": "node build/index.js",
-    "test": "npx tsx src/test-comprehensive.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:legacy": "npx tsx src/test-comprehensive.ts",
     "test:quick": "npx tsx src/test-final.ts",
     "prepublishOnly": "npm run build && npm test"
   },
@@ -45,6 +47,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
+    "@vitest/runner": "^4.0.18",
     "cheerio": "^1.0.0",
     "node-fetch": "^3.3.2",
     "zod": "^3.22.4"
