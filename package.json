@@ -1,6 +1,6 @@
 {
   "name": "bible-ko-mcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "MCP server for Korean Bible (bskorea.or.kr)",
   "type": "module",
   "main": "build/index.js",
@@ -40,13 +40,18 @@
   ],
   "author": "oksure",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "cheerio": "^1.0.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^1.6.1"
   }
 }

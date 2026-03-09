@@ -10,6 +10,18 @@ MCP (Model Context Protocol) server for accessing the Korean Bible from bskorea.
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@oksure/bible-ko-mcp/badge" alt="Bible Korean Server MCP server" />
 </a>
 
+**Features:**
+- ⚡️ **In-memory caching** with 30-min TTL for fast repeated requests
+- 🛡️ **Robust error handling** with try/catch and graceful fallbacks
+- ✅ **Input validation** with Zod schemas
+- 🏥 **Health check** tool for monitoring
+- 📚 **All 66 books** with 5 translations supported
+- 🔍 **Full-text search** across entire Bible
+
+## Node.js Version
+
+Requires **Node.js 20+**
+
 ## Features
 
 This MCP server provides tools to:
@@ -82,7 +94,7 @@ Search for verses containing specific keywords.
 - `query` (string, required): Search query in Korean or English
 - `version` (string, optional): Bible translation version (default: "GAE")
 
-**Note:** For demo purposes, search is limited to a few books and chapters.
+**Note:** Search covers all 66 books of the Bible with fallback results.
 
 **Example:**
 ```json

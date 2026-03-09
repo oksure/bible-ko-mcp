@@ -9,6 +9,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
+import { z } from "zod";
+import { validateInput, getChapterSchema } from "./validation.js";
+import { CONFIG } from "./config.js";
 
 // Bible book mappings
 const BIBLE_BOOKS: Record<string, { code: string; korean: string; testament: string }> = {
@@ -105,6 +108,51 @@ interface Chapter {
   verses: Verse[];
 }
 
+// Simple cache implementation
+class SimpleCache<T> {
+  private cache: Map<string, { data: T; timestamp: number }>;
+  private maxSize: number;
+  private ttl: number;
+
+  constructor(maxSize: number, ttl: number) {
+    this.cache = new Map();
+    this.maxSize = maxSize;
+    this.ttl = ttl;
+  }
+
+  get(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    if (Date.now() - entry.timestamp > this.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  set(key: string, value: T): void {
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
+    }
+    this.cache.set(key, { data: value, timestamp: Date.now() });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  get size(): number {
+    return this.cache.size;
+  }
+}
+
+const verseCache = new SimpleCache<Chapter>(CONFIG.CACHE.MAX_SIZE, CONFIG.CACHE.TTL_MS);
+
 // Helper function to find book code
 function findBookCode(bookName: string): string | null {
   const normalized = bookName.toLowerCase().trim();
@@ -145,9 +193,23 @@ async function fetchChapter(
   chapter: number,
   version: string = "GAE"
 ): Promise<Chapter> {
+  const cacheKey = `${version}:${bookCode}:${chapter}`; const cached = verseCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const url = `https://www.bskorea.or.kr/bible/korbibReadpage.php?version=${version}&book=${bookCode}&chap=${chapter}`;
 
-  const response = await fetch(url);
+  let response;
+  try {
+    response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+  } catch (error) {
+    throw new Error(`Failed to fetch chapter ${bookCode} ${chapter}:${error}`);
+  }
+
   const html = await response.text();
   const $ = cheerio.load(html);
 
@@ -183,7 +245,7 @@ async function fetchChapter(
 
   const bookInfo = getBookInfo(bookCode);
 
-  return {
+  const chapterData: Chapter = {
     book: bookInfo?.name || bookCode,
     bookKorean: bookInfo?.korean || "",
     chapter,
@@ -191,6 +253,9 @@ async function fetchChapter(
     versionName: TRANSLATIONS[version] || version,
     verses,
   };
+
+  verseCache.set(cacheKey, chapterData);
+  return chapterData;
 }
 
 // Search verses
@@ -205,16 +270,12 @@ async function searchVerses(
   // Determine which books to search
   const booksToSearch = books || Object.keys(BIBLE_BOOKS);
 
-  // For demo purposes, we'll search Genesis and Matthew only
-  // In production, you'd want to implement proper search or use the website's search feature
-  const limitedBooks = booksToSearch.slice(0, 2);
-
-  for (const bookName of limitedBooks) {
+  for (const bookName of booksToSearch) {
     const bookInfo = BIBLE_BOOKS[bookName];
     if (!bookInfo) continue;
 
     // Search first few chapters (limit to avoid too many requests)
-    for (let chapter = 1; chapter <= 3; chapter++) {
+    for (let chapter = 1; chapter <= CONFIG.SEARCH.CHAPTERS_PER_BOOK; chapter++) {
       try {
         const chapterData = await fetchChapter(bookInfo.code, chapter, version);
 
@@ -229,7 +290,7 @@ async function searchVerses(
           }
         }
       } catch (error) {
-        // Skip chapters that don't exist
+        // Skip chapters that don't exist or fail to fetch
         break;
       }
     }
@@ -311,7 +372,7 @@ const tools: Tool[] = [
   },
   {
     name: "search-bible",
-    description: "Search for verses containing specific keywords (searches limited books for demo)",
+    description: "Search for verses containing specific keywords across all Bible books",
     inputSchema: {
       type: "object",
       properties: {
@@ -370,6 +431,14 @@ const tools: Tool[] = [
       required: ["book", "chapter", "verse"],
     },
   },
+  {
+    name: "health_check",
+    description: "Check the health status of the Bible Korean MCP server and API connectivity",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
 ];
 
 // List tools handler
@@ -384,25 +453,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     switch (name) {
       case "get-chapter": {
-        const { book, chapter, version = "GAE" } = args as {
-          book: string;
-          chapter: number;
-          version?: string;
-        };
-
-        const bookCode = findBookCode(book);
+        const validated = validateInput(getChapterSchema, args, 'get-chapter');
+        const bookCode = findBookCode(validated.book);
         if (!bookCode) {
           return {
             content: [
               {
                 type: "text",
-                text: `Error: Book '${book}' not found. Use list-books to see available books.`,
+                text: `Error: Book '${validated.book}' not found. Use list-books to see available books.`,
               },
             ],
           };
         }
 
-        const chapterData = await fetchChapter(bookCode, chapter, version);
+        const chapterData = await fetchChapter(bookCode, validated.chapter, validated.version || "GAE");
 
         let result = `# ${chapterData.book} (${chapterData.bookKorean}) ${chapterData.chapter}\n`;
         result += `**Translation:** ${chapterData.versionName}\n\n`;
@@ -561,6 +625,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case "health_check": {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                status: "healthy",
+                timestamp: new Date().toISOString(),
+                api: {
+                  baseUrl: CONFIG.API.BASE_URL,
+                  timeout: CONFIG.API.TIMEOUT,
+                },
+                cache: {
+                  enabled: true,
+                  size: verseCache.size,
+                  maxSize: CONFIG.CACHE.MAX_SIZE,
+                  ttlMs: CONFIG.CACHE.TTL_MS,
+                },
+                config: {
+                  maxBooksToSearch: CONFIG.SEARCH.MAX_BOOKS_TO_SEARCH,
+                  chaptersPerBook: CONFIG.SEARCH.CHAPTERS_PER_BOOK,
+                  availableBooks: Object.keys(BIBLE_BOOKS).length,
+                  availableTranslations: Object.keys(TRANSLATIONS).length,
+                },
+              }, null, 2),
+            },
+          ],
+        };
+      }
+
       default:
         return {
           content: [
@@ -573,13 +667,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+
+    const errorDetails: any = {
+      tool: name,
+      error: errorMessage,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (error instanceof Error) {
+      errorDetails.type = error.constructor.name;
+    }
+
     return {
       content: [
         {
           type: "text",
-          text: `Error: ${errorMessage}`,
+          text: JSON.stringify({
+            success: false,
+            error: errorMessage,
+            details: errorDetails,
+          }, null, 2),
         },
       ],
+      isError: true,
     };
   }
 });
