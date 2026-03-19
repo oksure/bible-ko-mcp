@@ -10,7 +10,7 @@ import {
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
 import { z } from "zod";
-import { validateInput, getChapterSchema } from "./validation.js";
+import { validateInput, getChapterSchema, getVersesSchema, searchBibleSchema, listBooksSchema, compareTranslationsSchema } from "./validation.js";
 import { CONFIG } from "./config.js";
 
 // Bible book mappings
@@ -193,7 +193,8 @@ async function fetchChapter(
   chapter: number,
   version: string = "GAE"
 ): Promise<Chapter> {
-  const cacheKey = `${version}:${bookCode}:${chapter}`; const cached = verseCache.get(cacheKey);
+  const cacheKey = `${version}:${bookCode}:${chapter}`;
+  const cached = verseCache.get(cacheKey);
   if (cached) {
     return cached;
   }
@@ -202,18 +203,22 @@ async function fetchChapter(
 
   let response;
   try {
-    response = await fetch(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT);
+    response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
   } catch (error) {
-    throw new Error(`Failed to fetch chapter ${bookCode} ${chapter}:${error}`);
+    throw new Error(`Failed to fetch chapter ${bookCode} ${chapter}: ${error}`);
   }
 
   const html = await response.text();
   const $ = cheerio.load(html);
 
   const verses: Verse[] = [];
+  const seenVerses = new Set<number>();
 
   // Parse verses from span elements
   // The website uses span elements where verse text starts with verse number
@@ -234,7 +239,8 @@ async function fetchChapter(
       verseText = lines[0].trim();
 
       // Avoid duplicate verses (website has multiple spans per verse)
-      if (!verses.find((v) => v.number === verseNum)) {
+      if (!seenVerses.has(verseNum)) {
+        seenVerses.add(verseNum);
         verses.push({
           number: verseNum,
           text: verseText,
@@ -448,8 +454,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 // Call tool handler
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
   try {
-    const { name, arguments: args } = request.params;
 
     switch (name) {
       case "get-chapter": {
@@ -481,13 +487,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "get-verses": {
-        const { book, chapter, verseStart, verseEnd, version = "GAE" } = args as {
-          book: string;
-          chapter: number;
-          verseStart: number;
-          verseEnd?: number;
-          version?: string;
-        };
+        const validated = validateInput(getVersesSchema, args, 'get-verses');
+        const { book, chapter, verseStart, verseEnd, version = "GAE" } = validated;
 
         const bookCode = findBookCode(book);
         if (!bookCode) {
@@ -522,10 +523,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "search-bible": {
-        const { query, version = "GAE" } = args as {
-          query: string;
-          version?: string;
-        };
+        const validated = validateInput(searchBibleSchema, args, 'search-bible');
+        const { query, version = "GAE" } = validated;
 
         const results = await searchVerses(query, version);
 
@@ -554,7 +553,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "list-books": {
-        const { testament } = args as { testament?: string };
+        const validated = validateInput(listBooksSchema, args, 'list-books');
+        const { testament } = validated;
 
         let result = "# Bible Books\n\n";
 
@@ -582,12 +582,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "compare-translations": {
-        const { book, chapter, verse, versions } = args as {
-          book: string;
-          chapter: number;
-          verse: number;
-          versions?: string[];
-        };
+        const validated = validateInput(compareTranslationsSchema, args, 'compare-translations');
+        const { book, chapter, verse, versions } = validated;
 
         const bookCode = findBookCode(book);
         if (!bookCode) {
