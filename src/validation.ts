@@ -12,7 +12,10 @@ export const getVersesSchema = z.object({
   verseStart: z.number().positive().int(),
   verseEnd: z.number().positive().int().optional(),
   version: z.enum(['GAE', 'GAE1', 'NIR', 'KOR', 'CEV']).optional(),
-});
+}).refine(
+  (data) => !data.verseEnd || data.verseEnd >= data.verseStart,
+  { message: "verseEnd must be >= verseStart", path: ["verseEnd"] }
+);
 
 export const searchBibleSchema = z.object({
   query: z.string().min(1),

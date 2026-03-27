@@ -108,7 +108,7 @@ This uses the `search-bible` tool:
 }
 ```
 
-*Note: Search is limited to first few chapters of first few books for demo purposes*
+*Note: Search covers the first 10 chapters of each book — not a full-Bible search.*
 
 ## Available Bible Versions
 
@@ -129,19 +129,12 @@ You can refer to books in three ways:
 
 ## Testing
 
-Run the included test to verify the parser works:
+Run the test suite to verify everything works:
 ```bash
-npx tsx src/test-final.ts
+npm test
 ```
 
-Expected output:
-```
-=== Test 1: John 3:16 ===
-Fetched 36 verses from John 3
-
-John 3:16 (요한복음 3:16):
-하나님이 세상을 이처럼 사랑하사 독생자를 주셨으니...
-```
+This runs 42 integration tests covering chapter fetching, verse extraction, translation comparison, and edge cases.
 
 ## Troubleshooting
 
@@ -152,10 +145,11 @@ John 3:16 (요한복음 3:16):
 4. Check Claude Desktop logs for errors
 
 ### Verses not parsing correctly
-The website HTML structure may have changed. Run the test parser to debug:
+The website HTML structure may have changed. Run the test suite to check:
 ```bash
-npx tsx src/test-parser2.ts
+npm test
 ```
+If tests fail, inspect the source HTML directly and update the parsing regex in `src/bible.ts` (`fetchChapter()`).
 
 ### Search returns no results
 Search is intentionally limited to avoid overloading the source website. For production use, you would need to:
