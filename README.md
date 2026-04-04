@@ -12,6 +12,7 @@ MCP (Model Context Protocol) server for accessing the Korean Bible from bskorea.
 
 **Features:**
 - ⚡️ **In-memory caching** with 30-min TTL for fast repeated requests
+- 🔄 **Automatic retry** with exponential backoff (3 retries, 1s→2s→4s) for transient failures
 - 🛡️ **Robust error handling** with try/catch and graceful fallbacks
 - ✅ **Input validation** with Zod schemas
 - 🏥 **Health check** tool for monitoring
@@ -236,7 +237,8 @@ Remember to run `npm run build` after making changes.
 
 - Built with TypeScript and the MCP SDK
 - Uses cheerio for HTML parsing
-- Fetches data from bskorea.or.kr
+- Fetches data from bskorea.or.kr with automatic retry (exponential backoff) on transient failures
+- In-memory cache (30-min TTL, 2000 entries) avoids redundant requests
 - Supports all 66 books of the Bible
 - Handles Korean and English book names
 

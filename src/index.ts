@@ -16,7 +16,7 @@ import { BIBLE_BOOKS, TRANSLATIONS, SimpleCache, findBookCode, getBookInfo, fetc
 const server = new Server(
   {
     name: "bible-ko-mcp",
-    version: "0.2.1",
+    version: "0.2.2",
   },
   {
     capabilities: {

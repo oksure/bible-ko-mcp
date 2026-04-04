@@ -147,6 +147,7 @@ export const verseCache = new SimpleCache<Chapter>(CONFIG.CACHE.MAX_SIZE, CONFIG
 // Helper function to find book code
 export function findBookCode(bookName: string): string | null {
   const normalized = bookName.toLowerCase().trim();
+  if (!normalized) return null;
 
   // Try direct match
   for (const [name, info] of Object.entries(BIBLE_BOOKS)) {
