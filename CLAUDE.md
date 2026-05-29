@@ -14,14 +14,14 @@ MCP (Model Context Protocol) server that provides Korean Bible data from bskorea
 
 ```bash
 npm run build     # Build (must do before testing changes)
-npm test          # Run vitest suite (42 tests)
+npm test          # Run vitest suite (106 tests, 4 files)
 npm run watch     # Watch mode (auto-rebuild)
 npm start         # Start MCP server (after building)
 ```
 
 ### Before Committing
 ```bash
-npm test          # Must pass all 42 tests
+npm test          # Must pass all 106 tests
 npm run build     # Must compile without errors
 ```
 
@@ -36,7 +36,10 @@ src/
 ├── config.ts      # Configuration constants
 ├── validation.ts  # Zod schemas for tool inputs
 └── tests/
-    ├── bible-study.test.ts  # Vitest suite (42 tests)
+    ├── bible-study.test.ts  # Integration tests
+    ├── fetch-retry.test.ts  # Retry/backoff tests
+    ├── unit.test.ts         # Unit tests
+    ├── validation.test.ts   # Zod schema validation tests
     └── helpers.ts           # Re-exports from bible.ts + getVerses()
 ```
 
