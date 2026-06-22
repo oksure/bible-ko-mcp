@@ -16,15 +16,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # NOTE: do NOT set registry-url here — it makes setup-node write a
+      # token-expecting .npmrc (`//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`
+      # + always-auth), which breaks pure-OIDC trusted publishing on modern npm.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
 
       # npm OIDC trusted publishing requires npm >= 11.5.1; the version bundled
-      # with Node 22 is older, so upgrade before publishing (otherwise the
-      # registry PUT is unauthenticated and 404s).
+      # with Node 22 is older, so upgrade before publishing.
       - name: Upgrade npm for Trusted Publishing
         run: npm install -g npm@latest
 
