@@ -166,7 +166,7 @@ This project has two automated workflows:
    - Tests on Node.js 18 and 20
    - Ensures tests pass and build succeeds
 
-2. **Publish** - `.github/workflows/publish.yml`
+2. **Publish** - `.github/workflows/npm-publish.yml`
    - Runs when you create a GitHub release
    - Runs tests, builds, and publishes to NPM
    - Uses provenance for supply chain security

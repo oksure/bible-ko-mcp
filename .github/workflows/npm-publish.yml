@@ -3,6 +3,7 @@ name: Publish to NPM
 on:
   release:
     types: [created]
+  workflow_dispatch:    # allow manual re-publish of the current package.json version
 
 jobs:
   publish:
