@@ -19,8 +19,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
+
+      # npm OIDC trusted publishing requires npm >= 11.5.1; the version bundled
+      # with Node 22 is older, so upgrade before publishing (otherwise the
+      # registry PUT is unauthenticated and 404s).
+      - name: Upgrade npm for Trusted Publishing
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
