@@ -1,7 +1,7 @@
 {
   "name": "bible-ko-mcp",
-  "version": "0.2.2",
-  "description": "MCP server for Korean Bible (bskorea.or.kr)",
+  "version": "0.3.0",
+  "description": "MCP server (and Claude Skill) for the Korean Bible (bskorea.or.kr)",
   "type": "module",
   "main": "build/index.js",
   "bin": {
@@ -9,6 +9,7 @@
   },
   "files": [
     "build/",
+    "skill/",
     "README.md",
     "USAGE.md",
     "LICENSE"

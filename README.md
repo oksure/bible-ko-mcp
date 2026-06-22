@@ -32,6 +32,25 @@ This MCP server provides tools to:
 - List all available books
 - Compare verses across different Korean translations
 
+## Use as a Claude Skill (lightweight alternative)
+
+The same Korean Bible access is also packaged as a **Claude Skill** under
+[`skill/`](skill/) — a token-frugal alternative to the always-on MCP server. A
+skill loads into the agent's context only when invoked and shells out to a small
+zero-dependency Python CLI, so it costs nothing while idle. Use the **MCP server**
+in MCP clients (Claude Desktop, TypingMind); use the **skill** in coding agents
+(Claude Code, etc.) that already have shell access.
+
+```bash
+chmod +x skill/bin/bible && export PATH="$PWD/skill/bin:$PATH"
+bible verses John 3 16
+bible compare John 3 16
+```
+
+See [`skill/README.md`](skill/README.md) for install and the MCP-vs-skill
+trade-off. (The industry is steadily shifting routine API access from always-on
+MCP servers toward on-demand skills — this repo ships both.)
+
 ## Installation
 
 Install globally via npm:

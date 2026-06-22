@@ -1,0 +1,264 @@
+#!/usr/bin/env python3
+"""bible — Korean Bible CLI (data from bskorea.or.kr, 대한성서공회).
+
+A zero-dependency Python 3 port of the bible-ko-mcp server's domain logic:
+fetch a chapter, pull specific verses, compare translations, search, list books.
+No API key, no install beyond Python 3.
+
+Usage:
+  bible chapter <book> <chap> [--version V] [--json]
+  bible verses  <book> <chap> <range> [--version V] [--json]   # range: "16" | "1-5" | "1,3,5"
+  bible search  <query> [--version V] [--books "John,Mark"] [-n CHAPTERS] [--json]
+  bible compare <book> <chap> <verse> [--json]                 # all translations side by side
+  bible books   [--testament OT|NT] [--json]
+  bible versions
+
+<book> accepts an English name ("John"), a Korean name ("요한복음"), or a code ("jhn").
+Versions: GAE (개역개정, default), GAE1 (개역한글), NIR (새번역), KOR (공동번역), CEV.
+Note: search scans the first N chapters per book (default 10) — not a full-Bible scan.
+"""
+import json, re, sys, urllib.parse, urllib.request, urllib.error
+from html.parser import HTMLParser
+
+BASE = "https://www.bskorea.or.kr/bible/korbibReadpage.php"
+
+TRANSLATIONS = {
+  "GAE": "개역개정 (Revised Korean)",
+  "GAE1": "개역한글 (Korean Revised Version)",
+  "NIR": "새번역성경 (New Korean Revised Version)",
+  "KOR": "공동번역 (Common Translation)",
+  "CEV": "CEV (Contemporary English Version)",
+}
+
+# English name -> (code, korean, testament)
+BIBLE_BOOKS = {
+  "Genesis": ("gen", "창세기", "OT"), "Exodus": ("exo", "출애굽기", "OT"),
+  "Leviticus": ("lev", "레위기", "OT"), "Numbers": ("num", "민수기", "OT"),
+  "Deuteronomy": ("deu", "신명기", "OT"), "Joshua": ("jos", "여호수아", "OT"),
+  "Judges": ("jdg", "사사기", "OT"), "Ruth": ("rut", "룻기", "OT"),
+  "1 Samuel": ("1sa", "사무엘상", "OT"), "2 Samuel": ("2sa", "사무엘하", "OT"),
+  "1 Kings": ("1ki", "열왕기상", "OT"), "2 Kings": ("2ki", "열왕기하", "OT"),
+  "1 Chronicles": ("1ch", "역대상", "OT"), "2 Chronicles": ("2ch", "역대하", "OT"),
+  "Ezra": ("ezr", "에스라", "OT"), "Nehemiah": ("neh", "느헤미야", "OT"),
+  "Esther": ("est", "에스더", "OT"), "Job": ("job", "욥기", "OT"),
+  "Psalms": ("psa", "시편", "OT"), "Proverbs": ("pro", "잠언", "OT"),
+  "Ecclesiastes": ("ecc", "전도서", "OT"), "Song of Solomon": ("sng", "아가", "OT"),
+  "Isaiah": ("isa", "이사야", "OT"), "Jeremiah": ("jer", "예레미야", "OT"),
+  "Lamentations": ("lam", "예레미야애가", "OT"), "Ezekiel": ("ezk", "에스겔", "OT"),
+  "Daniel": ("dan", "다니엘", "OT"), "Hosea": ("hos", "호세아", "OT"),
+  "Joel": ("jol", "요엘", "OT"), "Amos": ("amo", "아모스", "OT"),
+  "Obadiah": ("oba", "오바댜", "OT"), "Jonah": ("jon", "요나", "OT"),
+  "Micah": ("mic", "미가", "OT"), "Nahum": ("nam", "나훔", "OT"),
+  "Habakkuk": ("hab", "하박국", "OT"), "Zephaniah": ("zep", "스바냐", "OT"),
+  "Haggai": ("hag", "학개", "OT"), "Zechariah": ("zec", "스가랴", "OT"),
+  "Malachi": ("mal", "말라기", "OT"),
+  "Matthew": ("mat", "마태복음", "NT"), "Mark": ("mrk", "마가복음", "NT"),
+  "Luke": ("luk", "누가복음", "NT"), "John": ("jhn", "요한복음", "NT"),
+  "Acts": ("act", "사도행전", "NT"), "Romans": ("rom", "로마서", "NT"),
+  "1 Corinthians": ("1co", "고린도전서", "NT"), "2 Corinthians": ("2co", "고린도후서", "NT"),
+  "Galatians": ("gal", "갈라디아서", "NT"), "Ephesians": ("eph", "에베소서", "NT"),
+  "Philippians": ("php", "빌립보서", "NT"), "Colossians": ("col", "골로새서", "NT"),
+  "1 Thessalonians": ("1th", "데살로니가전서", "NT"), "2 Thessalonians": ("2th", "데살로니가후서", "NT"),
+  "1 Timothy": ("1ti", "디모데전서", "NT"), "2 Timothy": ("2ti", "디모데후서", "NT"),
+  "Titus": ("tit", "디도서", "NT"), "Philemon": ("phm", "빌레몬서", "NT"),
+  "Hebrews": ("heb", "히브리서", "NT"), "James": ("jas", "야고보서", "NT"),
+  "1 Peter": ("1pe", "베드로전서", "NT"), "2 Peter": ("2pe", "베드로후서", "NT"),
+  "1 John": ("1jn", "요한일서", "NT"), "2 John": ("2jn", "요한이서", "NT"),
+  "3 John": ("3jn", "요한삼서", "NT"), "Jude": ("jud", "유다서", "NT"),
+  "Revelation": ("rev", "요한계시록", "NT"),
+}
+
+def find_book(name):
+  """Resolve an English/Korean/code book reference to (english, code, korean)."""
+  norm = (name or "").strip().lower()
+  if not norm:
+    return None
+  for en, (code, ko, _t) in BIBLE_BOOKS.items():
+    if en.lower() == norm or ko == name or code == norm:
+      return (en, code, ko)
+  for en, (code, ko, _t) in BIBLE_BOOKS.items():
+    if norm in en.lower() or name in ko:
+      return (en, code, ko)
+  return None
+
+def book_by_code(code):
+  for en, (c, ko, _t) in BIBLE_BOOKS.items():
+    if c == code:
+      return (en, ko)
+  return (code, "")
+
+class _Spans(HTMLParser):
+  """Collect the full text of every <span> (incl. descendant text), matching
+  cheerio's $('span').each(el => $(el).text())."""
+  def __init__(self):
+    super().__init__(convert_charrefs=True)
+    self._open = []   # buffers for currently-open spans
+    self.spans = []
+  def handle_starttag(self, tag, attrs):
+    if tag == "span":
+      self._open.append([])
+  def handle_data(self, data):
+    for buf in self._open:
+      buf.append(data)
+  def handle_endtag(self, tag):
+    if tag == "span" and self._open:
+      self.spans.append("".join(self._open.pop()))
+
+def fetch_chapter(code, chap, version="GAE"):
+  url = f"{BASE}?{urllib.parse.urlencode({'version': version, 'book': code, 'chap': chap})}"
+  req = urllib.request.Request(url, headers={"User-Agent": "bible-ko-cli/1.0"})
+  last = None
+  for _ in range(3):
+    try:
+      with urllib.request.urlopen(req, timeout=15) as r:
+        html = r.read().decode("utf-8", "replace")
+      break
+    except (urllib.error.URLError, TimeoutError) as e:
+      last = e
+  else:
+    sys.exit(f"bible: failed to fetch {code} {chap} ({type(last).__name__}); site slow/unreachable")
+
+  p = _Spans()
+  p.feed(html)
+  verses, seen = [], set()
+  for raw in p.spans:
+    m = re.match(r"^(\d+)\s+(.+)$", raw.strip(), re.S)
+    if not m:
+      continue
+    num = int(m.group(1))
+    txt = re.sub(r"\d+\)", "", m.group(2)).strip()   # strip footnote markers
+    txt = txt.split("\n")[0].strip()                  # drop trailing explanatory lines
+    if num not in seen:
+      seen.add(num)
+      verses.append({"number": num, "text": txt})
+  verses.sort(key=lambda v: v["number"])
+  en, ko = book_by_code(code)
+  return {"book": en, "bookKorean": ko, "chapter": chap, "version": version,
+          "versionName": TRANSLATIONS.get(version, version), "verses": verses}
+
+def parse_range(spec):
+  out = set()
+  for part in spec.split(","):
+    part = part.strip()
+    if "-" in part:
+      a, b = part.split("-", 1)
+      out.update(range(int(a), int(b) + 1))
+    elif part:
+      out.add(int(part))
+  return out
+
+def print_chapter(ch, only=None):
+  hdr = f"{ch['book']} ({ch['bookKorean']}) {ch['chapter']} — {ch['versionName']}"
+  print(hdr)
+  for v in ch["verses"]:
+    if only is None or v["number"] in only:
+      print(f"  {v['number']:>3}  {v['text']}")
+  if not ch["verses"]:
+    print("  (no verses parsed — chapter may not exist in this translation)")
+
+def main():
+  args = sys.argv[1:]
+  if not args or args[0] in ("-h", "--help", "help"):
+    print(__doc__); return
+  cmd, rest = args[0], args[1:]
+  as_json = "--json" in rest
+  rest = [a for a in rest if a != "--json"]
+  version, books_opt, nchap = "GAE", None, 10
+  pos = []
+  i = 0
+  while i < len(rest):
+    if rest[i] == "--version": version = rest[i + 1]; i += 2
+    elif rest[i] == "--books": books_opt = rest[i + 1]; i += 2
+    elif rest[i] == "--testament": books_opt = rest[i + 1]; i += 2
+    elif rest[i] == "-n": nchap = int(rest[i + 1]); i += 2
+    elif rest[i].startswith("--"): sys.exit(f"bible: unknown option {rest[i]}")
+    else: pos.append(rest[i]); i += 1
+
+  if cmd == "versions":
+    if as_json: print(json.dumps(TRANSLATIONS, ensure_ascii=False, indent=1))
+    else:
+      for k, v in TRANSLATIONS.items(): print(f"{k:5} {v}")
+    return
+
+  if cmd == "books":
+    sel = [(en, c, ko, t) for en, (c, ko, t) in BIBLE_BOOKS.items()
+           if not books_opt or t == books_opt.upper()]
+    if as_json:
+      print(json.dumps([{"name": en, "code": c, "korean": ko, "testament": t}
+                        for en, c, ko, t in sel], ensure_ascii=False, indent=1))
+    else:
+      for en, c, ko, t in sel: print(f"{t}  {c:4} {en:18} {ko}")
+    return
+
+  if cmd in ("chapter", "verses", "compare") and not pos:
+    sys.exit(f"bible: '{cmd}' needs a book argument (see --help)")
+
+  if cmd == "chapter":
+    bk = find_book(pos[0]) or sys.exit(f"bible: unknown book '{pos[0]}'")
+    chap = int(pos[1]) if len(pos) > 1 else 1
+    ch = fetch_chapter(bk[1], chap, version)
+    print(json.dumps(ch, ensure_ascii=False, indent=1)) if as_json else print_chapter(ch)
+
+  elif cmd == "verses":
+    bk = find_book(pos[0]) or sys.exit(f"bible: unknown book '{pos[0]}'")
+    if len(pos) < 3: sys.exit("bible: usage: bible verses <book> <chap> <range>")
+    chap, only = int(pos[1]), parse_range(pos[2])
+    ch = fetch_chapter(bk[1], chap, version)
+    sel = [v for v in ch["verses"] if v["number"] in only]
+    if as_json:
+      print(json.dumps({**ch, "verses": sel}, ensure_ascii=False, indent=1))
+    else:
+      print_chapter(ch, only)
+
+  elif cmd == "compare":
+    bk = find_book(pos[0]) or sys.exit(f"bible: unknown book '{pos[0]}'")
+    if len(pos) < 3: sys.exit("bible: usage: bible compare <book> <chap> <verse>")
+    chap, vnum = int(pos[1]), int(pos[2])
+    out = {}
+    for ver in TRANSLATIONS:
+      ch = fetch_chapter(bk[1], chap, ver)
+      hit = next((v["text"] for v in ch["verses"] if v["number"] == vnum), None)
+      out[ver] = hit
+    if as_json:
+      print(json.dumps({"book": bk[0], "korean": bk[2], "chapter": chap, "verse": vnum,
+                        "translations": out}, ensure_ascii=False, indent=1))
+    else:
+      print(f"{bk[0]} ({bk[2]}) {chap}:{vnum}")
+      for ver, txt in out.items():
+        print(f"  {ver:5} {txt or '(not found in this translation)'}")
+
+  elif cmd == "search":
+    if not pos: sys.exit("bible: usage: bible search <query> [--books \"John,Mark\"]")
+    query = pos[0].lower()
+    if books_opt and books_opt.upper() in ("OT", "NT"):
+      names = [en for en, (_c, _k, t) in BIBLE_BOOKS.items() if t == books_opt.upper()]
+    elif books_opt:
+      names = [b.strip() for b in books_opt.split(",")]
+    else:
+      names = list(BIBLE_BOOKS.keys())
+    hits = []
+    for nm in names:
+      bk = find_book(nm)
+      if not bk: continue
+      for chap in range(1, nchap + 1):
+        try:
+          ch = fetch_chapter(bk[1], chap, version)
+        except SystemExit:
+          break
+        if not ch["verses"]:
+          break
+        for v in ch["verses"]:
+          if query in v["text"].lower():
+            hits.append({"book": ch["book"], "chapter": chap, "verse": v["number"], "text": v["text"]})
+    if as_json:
+      print(json.dumps(hits, ensure_ascii=False, indent=1))
+    else:
+      print(f"(matches: {len(hits)})")
+      for h in hits:
+        print(f"  {h['book']} {h['chapter']}:{h['verse']}  {h['text']}")
+
+  else:
+    sys.exit(f"bible: unknown command '{cmd}' (see --help)")
+
+if __name__ == "__main__":
+  main()
